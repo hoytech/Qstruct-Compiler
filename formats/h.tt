@@ -1,0 +1,14 @@
+[% FOREACH def IN defs %]
+  typedef struct [% def.name %]__struct {
+    char *p;
+    size_t len;
+  } [% def.name %];
+
+  int [% def.name %]_load(char *buffer, size_t len, [% def.name %] *output);
+
+  [%- FOREACH item IN def.items %]
+  int [% def.name %]_get_[% item.name %]([%-%]
+    [%- def.name %] *, [% item.type %] *
+  [%-%]);
+  [%- END %]
+[% END %]

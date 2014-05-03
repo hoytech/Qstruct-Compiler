@@ -1,0 +1,11 @@
+qstruct Account {
+  id @0 uint64;
+  balance @1 double;
+}
+
+qstruct User {
+  emails @2 string[];
+  accounts @3 Account[];
+  name @1 string;
+  id @0 uint64;
+}

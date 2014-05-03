@@ -2,12 +2,22 @@ use strict;
 
 use ExtUtils::MakeMaker;
 
+use File::ShareDir::Install;
+install_share module => 'Qstruct::Compiler::LibqstructHeaders' => 'libqstruct/qstruct/';
+install_share module => 'Qstruct::Compiler::Formats' => 'formats/';
+
 
 my %args = (
     NAME => 'Qstruct::Compiler',
     VERSION_FROM => 'lib/Qstruct/Compiler.pm',
+    EXE_FILES => [ 'bin/qstructc', ],
+    CONFIGURE_REQUIRES => {
+      'File::ShareDir::Install' => 0,
+    },
     PREREQ_PM => {
+      'Qstruct' => 0,
       'Template' => 0,
+      'File::ShareDir' => 0,
     },
     LIBS => [],
     DEFINE => '',
@@ -26,3 +36,9 @@ if ($eummv >= 6.45) {
 }
 
 WriteMakefile(%args);
+
+{
+package
+MY;
+use File::ShareDir::Install qw(postamble);
+}

@@ -1,0 +1,109 @@
+#!/usr/bin/env perl
+
+use common::sense;
+
+use Getopt::Long;
+use Template;
+
+use Qstruct;
+
+use Qstruct::Compiler::Formats;
+
+
+my @opt_spec = (
+  'format=s',
+  'inline=i',
+  'output-dir=s',
+  'dumper',
+);
+
+my $opt = {
+  'format' => 'h',
+  'inline' => 2,
+};
+
+GetOptions($opt, @opt_spec) || die "GetOptions failed";
+
+
+
+my $schema_filename = shift || die "need an input file";
+
+die "malformed format name '$opt->{format}'" unless $opt->{format} =~ /^[-\w]+$/;
+
+
+
+
+open(my $schema_fh, '<', $schema_filename) || die "unable to open schema file '$schema_filename': $!";
+
+my $schema = do { local $/; <$schema_fh> };
+
+
+
+my @defs;
+
+Qstruct::parse_schema($schema)->iterate(sub {
+  my $def = shift;
+
+  push @defs, $def;
+
+  for(my $i=0; $i < $def->{num_items}; $i++) {
+    my $item = Qstruct::Definitions::get_item($def->{def_addr}, $i);
+    push @{ $def->{items} }, $item;
+
+    my $type_raw = $item->{type_raw} = $item->{type};
+    ($item->{type}, $item->{width}) = Qstruct::type_lookup($item->{type_raw});
+
+    $item->{is_unsigned} = !!($type_raw & (1<<16));
+    $item->{is_array_fix} = !!($type_raw & (1<<17));
+    $item->{is_array_dyn} = !!($type_raw & (1<<18));
+  }
+});
+
+
+
+if ($opt->{dumper}) {
+  require Data::Dumper;
+  print STDERR Data::Dumper::Dumper(\@defs);
+  exit;
+}
+
+
+
+my @template_files;
+
+{
+  my $all_formats_dir = Qstruct::Compiler::Formats::get_mod_dir();
+
+  my $single_file = "$all_formats_dir/$opt->{format}.tt";
+  my $dir = "$all_formats_dir/$opt->{format}";
+
+  if (-e $single_file) {
+    push @template_files, $single_file;
+  } elsif (-d $dir) {
+    opendir(my $dh, $dir) || die "can't open format dir '$dir': $!";
+
+    while(readdir $dh) {
+      next if /^[.]/;
+      my $file = "$dir/$_";
+
+      die "$file template name didn't end in .tt" unless $file =~ /[.]tt$/;
+      die "$file is not a file" if !-f $file;
+
+      push @template_files, $file;
+    }
+  } else {
+    die "no such format: $opt->{format}";
+  }
+}
+
+
+
+
+my $tt = Template->new({ ABSOLUTE => 1, });
+
+if (@template_files == 1 && !defined $opt->{'output-dir'}) {
+  $tt->process($template_files[0], { defs => \@defs }, \*STDOUT)
+    || die "Template toolkit error: " . $tt->error();
+} else {
+  die "not impl";
+}
