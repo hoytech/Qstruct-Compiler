@@ -61,6 +61,12 @@ Qstruct::parse_schema($schema)->iterate(sub {
 
 
 
+foreach my $def (@defs) {
+  @{ $def->{items} } = sort { $a->{order} <=> $b->{order} }
+                            @{ $def->{items} };
+}
+
+
 if ($opt->{dumper}) {
   require Data::Dumper;
   print STDERR Data::Dumper::Dumper(\@defs);
