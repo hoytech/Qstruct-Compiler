@@ -1,14 +1,46 @@
+[% BLOCK item_to_output -%]
+  [%- IF item.type == 'string' || item.type == 'blob' -%]
+char **output, size_t *output_len
+  [%- ELSE -%]
+[% item.type %]_t *output
+  [%- END -%]
+[%- END %]
+
 [% FOREACH def IN defs %]
-  typedef struct [% def.name %]__struct {
-    char *p;
+
+/* --------------- [% def.name %] --------------- */
+
+
+  typedef struct {
+    char *buf;
     size_t len;
   } [% def.name %];
 
-  int [% def.name %]_load(char *buffer, size_t len, [% def.name %] *output);
+  static inline int [% def.name %]_load(char *buf, size_t len, [% def.name %] *output) {
+    int rv = qstruct_sanity_check(buf, len);
+    if (rv) return rv;
+
+    output->buf = buf;
+    output->len = len;
+
+    return 0;
+  }
 
   [%- FOREACH item IN def.items %]
-  int [% def.name %]_get_[% item.name %]([%-%]
-    [%- def.name %] *, [% item.type %] *
-  [%-%]);
+    [% IF item.is_array_dyn %]
+      static inline int [% def.name %]_num_[% item.name %]([%- def.name %] *obj, size_t *num) {
+      }
+    [% END %]
+
+    static inline int [% def.name %]_get_[% item.name %]([%- def.name %] *obj, [% INCLUDE item_to_output item = item %]) {
+      [% IF item.is_array_dyn %]
+      [% ELSE %]
+        [% IF item.type == 'string' || item.type == 'blob' %]
+          return qstruct_get_pointer(obj->buf, obj->len, 0, [% item.byte_offset %], output, output_len, 1);
+        [% ELSIF item.type == 'uint64' %]
+          return qstruct_get_uint64(obj->buf, obj->len, 0, [% item.byte_offset %], output);
+        [% END %]
+      [% END %]
+    }
   [%- END %]
 [% END %]
