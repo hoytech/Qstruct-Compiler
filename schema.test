@@ -1,9 +1,9 @@
-qstruct Account {
+qstruct MyPkg::Account {
   id @0 uint64;
   balance @1 double;
 }
 
-qstruct User {
+qstruct MyPkg::User {
   emails @2 string[];
   accounts @3 Account[];
   name @1 string;

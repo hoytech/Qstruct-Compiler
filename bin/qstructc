@@ -4,22 +4,20 @@ use common::sense;
 
 use Getopt::Long;
 use Template;
+use Digest::SHA;
 
 use Qstruct;
-
-use Qstruct::Compiler::Formats;
+use Qstruct::Compiler;
 
 
 my @opt_spec = (
   'format=s',
-  'inline=i',
   'output-dir=s',
   'dumper',
 );
 
 my $opt = {
-  'format' => 'h',
-  'inline' => 2,
+  'format' => 'cpp',
 };
 
 GetOptions($opt, @opt_spec) || die "GetOptions failed";
@@ -67,6 +65,7 @@ foreach my $def (@defs) {
 }
 
 
+
 if ($opt->{dumper}) {
   require Data::Dumper;
   print STDERR Data::Dumper::Dumper(\@defs);
@@ -75,41 +74,24 @@ if ($opt->{dumper}) {
 
 
 
-my @template_files;
+eval "require Qstruct::Compiler::Formats::$opt->{format}";
+die "unknown format: $opt->{format}" if $@;
 
-{
-  my $all_formats_dir = Qstruct::Compiler::Formats::get_mod_dir();
-
-  my $single_file = "$all_formats_dir/$opt->{format}.tt";
-  my $dir = "$all_formats_dir/$opt->{format}";
-
-  if (-e $single_file) {
-    push @template_files, $single_file;
-  } elsif (-d $dir) {
-    opendir(my $dh, $dir) || die "can't open format dir '$dir': $!";
-
-    while(readdir $dh) {
-      next if /^[.]/;
-      my $file = "$dir/$_";
-
-      die "$file template name didn't end in .tt" unless $file =~ /[.]tt$/;
-      die "$file is not a file" if !-f $file;
-
-      push @template_files, $file;
-    }
-  } else {
-    die "no such format: $opt->{format}";
-  }
-}
-
-
-
+my $template = do {
+  no strict 'refs';
+  ${"Qstruct::Compiler::Formats::$opt->{format}::template"}
+};
 
 my $tt = Template->new({ ABSOLUTE => 1, });
 
-if (@template_files == 1 && !defined $opt->{'output-dir'}) {
-  $tt->process($template_files[0], { defs => \@defs }, \*STDOUT)
+
+my $context = {
+  schema_filename => $schema_filename,
+  schema_sha1 => Digest::SHA::sha1_hex($schema),
+  qstruct_compiler_version => $Qstruct::Compiler::VERSION,
+  defs => \@defs,
+};
+
+
+$tt->process(\$template, $context, \*STDOUT)
     || die "Template toolkit error: " . $tt->error();
-} else {
-  die "not impl";
-}

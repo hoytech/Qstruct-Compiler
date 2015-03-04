@@ -3,13 +3,6 @@ package Qstruct::Compiler;
 our $VERSION = '0.100';
 
 use strict;
-use File::ShareDir;
-
-use Qstruct::Compiler::LibqstructHeaders;
-
-sub lol {
-  return "OMFG " . File::ShareDir::module_dir('Qstruct::Compiler::LibqstructHeaders');
-}
 
 1;
 
